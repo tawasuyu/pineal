@@ -1,0 +1,19 @@
+[package]
+name = "pineal-demo"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+authors = { workspace = true }
+publish = { workspace = true }
+description = "Lapaloma — demo app: una serie sin(x) sobre ChartViewport rendereada con LapalomaChartElement. Valida la cadena core → render → cartesian → llimphi en vivo."
+
+[dependencies]
+llimphi-ui = { workspace = true }
+llimphi-theme = { workspace = true }
+pineal-core = { path = "../../pineal-core" }
+pineal-render = { path = "../../pineal-render" }
+pineal-cartesian = { path = "../../pineal-cartesian" }
+
+llimphi-widget-menubar = { workspace = true }
+llimphi-widget-context-menu = { workspace = true }
+app-bus = { workspace = true }

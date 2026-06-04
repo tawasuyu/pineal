@@ -1,0 +1,48 @@
+[package]
+name = "pineal"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+authors = { workspace = true }
+publish = { workspace = true }
+description = "Lapaloma — paraguas: re-exporta los módulos para prototipos. En producción importar los crates hoja directamente para que tree-shaking descarte lo no usado."
+
+[dependencies]
+pineal-core = { path = "../pineal-core", optional = true }
+pineal-render = { path = "../pineal-render", optional = true }
+pineal-cartesian = { path = "../pineal-cartesian", optional = true }
+pineal-stream = { path = "../pineal-stream", optional = true }
+pineal-mesh = { path = "../pineal-mesh", optional = true }
+pineal-financial = { path = "../pineal-financial", optional = true }
+pineal-polar = { path = "../pineal-polar", optional = true }
+pineal-heatmap = { path = "../pineal-heatmap", optional = true }
+pineal-treemap = { path = "../pineal-treemap", optional = true }
+pineal-flow = { path = "../pineal-flow", optional = true }
+pineal-phosphor = { path = "../pineal-phosphor", optional = true }
+pineal-export = { path = "../pineal-export", optional = true }
+pineal-hexbin = { path = "../pineal-hexbin", optional = true }
+pineal-contour = { path = "../pineal-contour", optional = true }
+pineal-bars = { path = "../pineal-bars", optional = true }
+
+[features]
+default = ["full"]
+full = [
+    "core", "render", "cartesian", "stream", "mesh", "financial",
+    "polar", "heatmap", "treemap", "flow", "phosphor", "export",
+    "hexbin", "contour", "bars",
+]
+core = ["dep:pineal-core"]
+render = ["dep:pineal-render", "core"]
+cartesian = ["dep:pineal-cartesian", "render"]
+stream = ["dep:pineal-stream", "render"]
+mesh = ["dep:pineal-mesh", "render"]
+financial = ["dep:pineal-financial", "cartesian"]
+polar = ["dep:pineal-polar", "render"]
+heatmap = ["dep:pineal-heatmap", "render"]
+treemap = ["dep:pineal-treemap", "render"]
+flow = ["dep:pineal-flow", "render"]
+phosphor = ["dep:pineal-phosphor", "stream"]
+export = ["dep:pineal-export", "render"]
+hexbin = ["dep:pineal-hexbin", "heatmap"]
+contour = ["dep:pineal-contour", "heatmap"]
+bars = ["dep:pineal-bars", "render"]

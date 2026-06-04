@@ -1,0 +1,244 @@
+# SDD — pineal
+
+> Backend-agnostic visualization. El "tercer ojo" del monorepo.
+
+Pineal es un catálogo de canvases especializados (cartesian, polar, mesh,
+treemap, phosphor, flow, heatmap, stream, financial) sobre una única
+abstracción de painter. Cualquier dominio del workspace puede empujar
+formas a un pineal y obtener pintura sin cargar con su propio stack
+gráfico.
+
+## 0. Posición en el monorepo
+
+Cuadrante: `00_unanchay/` (PERCIBIR). Pineal **no computa** — sólo dibuja.
+La simulación vive en `cosmos`, `dominium`, `tinkuy`, `chasqui`, etc.;
+pineal recibe el output y lo materializa en pixels.
+
+## 1. Invariantes (las tres reglas)
+
+**P1 — Zero boxing.** Los datos viven en `Vec<f32>` planos
+interleaved `[x0, y0, x1, y1, ...]`, nunca como `Vec<Point2D>`. Hot
+en cache L1, SIMD-loopable por el compilador, listo para vertex buffer
+sin transformación. Aplica a `DataBuffer`, `RingBuffer`, `NodeBuffer`.
+
+**P2 — Zero alloc en hot path.** Buffers se reservan al construir y se
+mutan in-place para siempre. Helpers escriben a `&mut Vec` provistos por
+el caller, no devuelven `Vec` nuevos. El `RingBuffer` del stream
+demuestra esto: `push(v)` son 2 escrituras + 2 increments.
+
+**P3 — Una draw call por capa.** Los painters tesselan en un solo
+`polyline` / `triangle_strip` por serie. El backend pinta cada uno como
+un draw call cuando puede.
+
+## 2. Topología de crates
+
+```
+pineal-core ─┬─ buffer, ring, spatial, lttb, scale
+             └─ (algoritmos puros — sin gráficos)
+
+pineal-render ──── trait Canvas
+                  ├── SceneCanvas (backend vello/llimphi)
+                  └── PlanRecorder (replay diferido)
+
+pineal-{cartesian, polar, mesh, treemap, phosphor, flow,
+        heatmap, stream, financial, hexbin, contour, bars} ── painters
+
+pineal-export ── consume RenderPlan → SVG + PNG
+
+pineal-umbrella ── re-exports todo bajo features (cómodo en prototipos)
+```
+
+Regla dura: los painters hablan **únicamente** contra el trait `Canvas`
+de `pineal-render`. No conocen el runtime UI. Esto deja toda la cadena
+`core → render → painter` agnóstica del backend gráfico.
+
+## 3. El trait `Canvas`
+
+Set mínimo deliberado — cualquier viz compleja se descompone en estos
+primitivos por el painter, no por el backend:
+
+```rust
+trait Canvas {
+    fn push_clip(&mut self, rect: Rect);
+    fn pop_clip(&mut self);
+    fn fill_rect(&mut self, rect: Rect, color: Color);
+    fn stroke_rect(&mut self, rect: Rect, stroke: StrokeStyle);
+    fn stroke_line(&mut self, a: Point, b: Point, stroke: StrokeStyle);
+    fn stroke_polyline(&mut self, coords: &[f32], stroke: StrokeStyle);
+    fn fill_triangle_strip(&mut self, coords: &[f32], colors: &[Color]);
+    fn draw_text(&mut self, p: Point, text: &str, color: Color, size_px: f32);
+}
+```
+
+Convención de coordenadas: pixels absolutos del scene, origen
+arriba-izquierda, +Y hacia abajo. La proyección datos→pixel la hace el
+painter vía las escalas de `pineal-core`.
+
+## 4. Backends activos
+
+| Backend | Status | Ubicación |
+|---|---|---|
+| **vello/llimphi** (`SceneCanvas`) | Producción. Pinta en `View::paint_with`. | `pineal-render::llimphi_backend` |
+| **SVG vectorial** (`to_svg`) | Producción. Emite `<rect>`/`<polyline>`/`<polygon>`. | `pineal-export::svg` |
+| **PNG raster** (`to_png`) | Producción. Software rasterizer propio con AA 2×2. | `pineal-export::png` |
+| **PDF** (`to_pdf`) | Producción. Writer propio (sin `printpdf`), 1 página, operadores PDF-1.4. | `pineal-export::pdf` |
+| **GPU directo `wgpu`** (`GpuSceneCanvas`) | Producción. Para 0.1–10 M primitivas. Pinta en `View::gpu_paint_with`, sin texto y sin AA fino. | `pineal-render::gpu_canvas` |
+
+El rasterizador PNG es propio para no depender de `tiny-skia`/`cairo`/etc.
+Texto se omite a propósito — para labels usar SVG. Coverage 2×2 (4
+samples por pixel) da AA suficiente para reportes y dashboards.
+
+## 5. Canvases (painters)
+
+| Crate | Painter | Algoritmo clave |
+|---|---|---|
+| `pineal-cartesian` | `ChartView` | Ticks por escala log/lin, viewport con zoom anclado, cache de panning |
+| `pineal-polar` | `paint_pie`, `paint_radar` | Wedge teselado a 96 segs/vuelta, fan para radar |
+| `pineal-mesh` | `paint_graph`, `tree_layout`, `ForceLayout`, `bundle` | Fruchterman-Reingold O(n²) y Barnes-Hut O(n log n), Sugiyama-lite layered, FDEB-lite para bundling |
+| `pineal-treemap` | `paint_treemap` | Squarified (Bruls / d3-hierarchy) |
+| `pineal-phosphor` | trail tipo CRT | Triangle strip con alpha decay |
+| `pineal-flow` | `paint_sankey` | Longest-path + barycenter + ribbons smoothstep |
+| `pineal-heatmap` | `paint`, `encode_argb` | Ramp Viridis + textura para matrices grandes |
+| `pineal-stream` | `pineal_stream_view` | Sweep oscilloscope split-at-head |
+| `pineal-financial` | `paint_candles` | OHLC + agregación por bucket temporal |
+| `pineal-hexbin` | `paint_hexbin` | Bineado hexagonal pointy-top + ramp Viridis |
+| `pineal-contour` | `paint_contours` | Marching squares 16 casos → polilíneas por nivel |
+| `pineal-bars` | `paint_bars`, `paint_grouped`, `paint_stacked` | Columnas/barras vertical u horizontal, agrupadas y apiladas, baseline con negativos; `Histogram` binea `&[f32]` → barras |
+
+### 5.1 Barnes-Hut (added 2026-05-28)
+
+`pineal-mesh::barnes_hut::Quadtree` aproxima la fuerza repulsiva con
+criterio MAC (`s/d < theta`). Usar `ForceLayout::step_bh(theta=0.5)`
+para grafos > ~1 K nodos. Para grafos chicos `step()` naïve es más
+rápido en práctica (sin overhead del árbol).
+
+### 5.2 Sugiyama (added 2026-05-28)
+
+`pineal-mesh::hierarchical::sugiyama_layout` produce layout layered en
+3 pasadas: DFS para romper ciclos → Kahn longest-path para capas →
+barycenter en 2 pasadas (down + up) para reducir cruces. Devuelve
+posiciones + agrupación por capa.
+
+### 5.3 FDEB (added 2026-05-28)
+
+`pineal-mesh::fdeb::bundle` aplica Force-Directed Edge Bundling: cada
+arista se subdivide en N puntos intermedios que se atraen a puntos
+correspondientes de aristas compatibles (paralelas + cerca + similar
+escala). Endpoints fijos. Útil para grafos densos donde el spaghetti
+oculta el flujo macroscópico.
+
+### 5.4 PDF con decimación contextual (added 2026-05-28)
+
+`pineal-export::to_pdf_decimated(plan, w_pts, h_pts, dpi)` aplica LTTB
+a cada polyline antes de emitir el PDF, con
+`target = width_inches × dpi × 3 vértices/px`. Output PDF mucho más
+chico sin sacrificar la silueta visible al DPI destino.
+
+## 6. Decisión: AA por defecto en PNG, no en pantalla
+
+- **PNG**: AA 2×2 supersample siempre. PNG es output offline; el costo
+  no importa, el resultado vive para siempre.
+- **Vello/llimphi**: AA del compositor (lo que vello hace nativamente).
+  No agregamos nada encima.
+- **SVG**: el renderer destino decide. Pineal no tiene rasterizado allí.
+
+## 7. Tests
+
+Cobertura por crate:
+
+- `pineal-core` — 23 unit tests (buffers, ring, spatial, lttb, scale).
+- `pineal-render` — 4 (color conversion + recorder roundtrip).
+- `pineal-mesh` — 25 (incluye Barnes-Hut vs naïve dentro del 30 %,
+  Sugiyama chain/fan/cycle).
+- `pineal-export` — 9 (SVG + PNG, validación de bytes magic + roundtrip
+  decode/check pixel).
+- `pineal-bars` — 10 (simple/agrupado/apilado en ambas orientaciones,
+  baseline con negativos, histograma: suma de conteos, último bin, rango
+  degenerado).
+- Cada painter trae 4–13 tests propios usando `PlanRecorder`.
+
+Total al 2026-06-01: **140+ tests verdes**.
+
+## 8. Decisiones explícitas
+
+| Decisión | Razón |
+|---|---|
+| `fill_triangle_strip` con color promedio por triángulo | Vello no expone mesh con per-vertex color trivial. Sankey/radar/wedge usan colores uniformes igualmente. |
+| No mock GPUI ni Skia ni cairo | El catálogo entero está sobre vello/llimphi en pantalla y software-puro en PNG. Cero deps gráficas externas. |
+| `RingBuffer` con `revision` u64 | Permite a los backends invalidar texturas cacheadas sin diff por valor. Mismo patrón en `HeatmapMatrix`. |
+| Painters dibujan ABSOLUTO en pixels del scene | Composición vía `View::paint_with`: el caller pasa `PaintRect` y el painter no necesita conocer transformations. |
+
+## Estado (2026-06-01)
+
+### Hecho
+
+- Catálogo: 15 crates viz/render/export (core, render, cartesian,
+  polar, mesh, treemap, phosphor, flow, heatmap, stream, financial,
+  hexbin, contour, bars, umbrella) + export SVG/PNG/PDF + 14 demos
+  ejecutables (incluyendo `pineal-galeria-demo`, que muestra 11 painters
+  en una sola ventana, y `pineal-bars-demo`).
+- **bars** (added 2026-06-01, a pedido): el gráfico común que faltaba.
+  `paint_bars`/`paint_grouped`/`paint_stacked` (vertical u horizontal,
+  baseline con negativos) + `Histogram` para bineado de muestras. 10
+  tests propios con `PlanRecorder`.
+- Algoritmos de grafo: Fruchterman-Reingold + Barnes-Hut O(n log n),
+  Sugiyama-lite layered, FDEB-lite para bundling.
+- Backends en producción: vello/llimphi (`SceneCanvas`), SVG vectorial,
+  PNG raster con AA 2×2, PDF writer propio (+ decimación LTTB contextual).
+- **GPU directo wgpu** (`GpuSceneCanvas`, Fase 4): mismo trait `Canvas`
+  sobre `llimphi-raster::GpuBatch`; pinta en `View::gpu_paint_with`.
+  Validado en Iris Xe (11.76×@1M, 141 fps).
+- **Primer consumidor real del camino GPU** (`pineal-gpu-demo`,
+  2026-06-01): starfield warp 3D que proyecta perspectiva en CPU y emite
+  hasta **1 M `fill_rect`** por frame contra el trait `Canvas` — detrás,
+  `GpuSceneCanvas` los colapsa en **una sola draw call instanciada**.
+  Densidad cicable 50K→200K→500K→1M (tecla `D` / menú), pausa con
+  `espacio`. Cierra el pendiente que el SDD arrastraba: el camino GPU ya
+  no es sólo teoría + tests, hay una app que lo ejercita end-to-end.
+- Menú principal + contextual cableados en las demos.
+- 140+ tests verdes (los 10 de bars incluidos).
+
+### Pendiente
+
+- Texto y AA fino en el camino GPU (limitación documentada del backend;
+  los labels del starfield van por la pasada vello hermana, como prescribe
+  el módulo `gpu_canvas`).
+- El techo de >1M primitivos por frame en vello es horizontal de
+  `llimphi-raster`, no de pineal. El camino GPU directo (ya ejercitado)
+  es justamente la vía para superarlo.
+
+## 9. Roadmap
+
+El catálogo de pineal cubre 15 crates de viz/render/export
++ 14 demos ejecutables + SDD propio. **Pineal no tiene roadmap propio
+pendiente.** El catálogo no está congelado por dogma: cuando aparece un
+tipo de gráfico genuinamente común que falta (como `bars`, agregado el
+2026-06-01), entra — siempre que respete las tres reglas y hable sólo
+contra el trait `Canvas`.
+
+El único techo es el del motor (vello no aguanta >1M primitivos por
+frame), y ése es un asunto horizontal de `llimphi-raster`, no de pineal
+— afecta por igual a cosmos, tinkuy, nakui y cualquier app sobre
+llimphi. Ver `02_ruway/llimphi/SDD.md §"GPU directo wgpu"`.
+
+**Hecho 2026-05-28**: `pineal-render::gpu_canvas::GpuSceneCanvas` ya
+existe — implementa el mismo trait `Canvas` apoyándose en
+`llimphi_raster::GpuBatch`. Los painters no cambian. Lo enchufa la app
+desde un `View::gpu_paint_with` (en lugar de `paint_with`). Trade-offs
+(sin texto, una sola `line_width` por flush, sin AA fino) documentados
+en el módulo.
+
+**Hecho 2026-06-01**: `pineal-gpu-demo` es la primera visualización densa
+que lo ejercita — un starfield warp 3D que empuja hasta 1 M `fill_rect`
+por frame por el camino GPU directo. El SDD daba "cosmos starfield" como
+candidata; se hizo un starfield autónomo dentro de pineal para no acoplar
+el demo a la maquinaria de cosmos (que computa, y pineal no computa).
+cosmos puede ahora copiar el patrón cuando quiera su propio cielo GPU.
+
+## 10. Lo que NO va a pineal
+
+- Lógica de dominio (queda en `cosmos`, `dominium`, etc.).
+- Persistencia (queda en `pluma-store`, `nakui-store`, etc.).
+- Input / event handling (queda en `llimphi-ui`).
+- Decisión de qué pintar (queda en el caller — pineal es el martillo,
+  no el carpintero).
