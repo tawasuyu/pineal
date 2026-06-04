@@ -80,7 +80,7 @@ dependencies = [
 [[package]]
 name = "app-bus"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "directories",
  "serde",
@@ -944,7 +944,7 @@ checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 [[package]]
 name = "llimphi-compositor"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "llimphi-layout",
  "llimphi-text",
@@ -955,7 +955,7 @@ dependencies = [
 [[package]]
 name = "llimphi-hal"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "pollster",
  "raw-window-handle",
@@ -966,7 +966,7 @@ dependencies = [
 [[package]]
 name = "llimphi-layout"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "taffy",
 ]
@@ -974,7 +974,7 @@ dependencies = [
 [[package]]
 name = "llimphi-raster"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "llimphi-hal",
  "pollster",
@@ -984,7 +984,7 @@ dependencies = [
 [[package]]
 name = "llimphi-text"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "parley",
  "vello",
@@ -993,7 +993,7 @@ dependencies = [
 [[package]]
 name = "llimphi-theme"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "llimphi-raster",
 ]
@@ -1001,7 +1001,7 @@ dependencies = [
 [[package]]
 name = "llimphi-ui"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "llimphi-compositor",
  "llimphi-hal",
@@ -1014,7 +1014,7 @@ dependencies = [
 [[package]]
 name = "llimphi-widget-button"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "llimphi-theme",
  "llimphi-ui",
@@ -1023,7 +1023,7 @@ dependencies = [
 [[package]]
 name = "llimphi-widget-context-menu"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "llimphi-theme",
  "llimphi-ui",
@@ -1033,7 +1033,7 @@ dependencies = [
 [[package]]
 name = "llimphi-widget-menubar"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "app-bus",
  "llimphi-theme",
@@ -1045,7 +1045,7 @@ dependencies = [
 [[package]]
 name = "llimphi-widget-panel"
 version = "0.1.0"
-source = "git+https://gitea.gioser.net/sergio/llimphi.git#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
+source = "git+https://gitea.gioser.net/sergio/llimphi.git?tag=v0.1.0#c1b11b2c01d7623a4f346519b9d1ec435be30b95"
 dependencies = [
  "llimphi-theme",
  "llimphi-ui",
