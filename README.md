@@ -1,10 +1,16 @@
 # pineal
 
-> Backend-agnostic visualization — the "third eye". A catalog of GPU painters over a single `Canvas` trait, in Rust, on [Llimphi](https://gitea.gioser.net/sergio/llimphi).
+> Backend-agnostic visualization — the "third eye". A catalog of GPU painters over a single `Canvas` trait, in Rust, on [Llimphi](https://github.com/tawasuyu/llimphi).
 
 `pineal` is a catalog of specialized painters — cartesian, polar, mesh, treemap, phosphor, flow, heatmap, stream, financial, hexbin, contour, bars — over **one painter abstraction**, the `Canvas` trait. Any program can push shapes to a pineal and get pixels without carrying its own graphics stack. The whole chain `core → render → painter` is **agnostic of the backend**: the same painter draws to vello/Llimphi on screen, to software PNG/SVG/PDF offline, or straight to the GPU for millions of primitives.
 
 pineal **does not compute — it only draws.** Simulation lives elsewhere; pineal turns the output into pixels. It's the hammer, not the carpenter.
+
+<p align="center">
+  <img src="docs/pineal_showreel.gif" alt="pineal showreel — a montage of chart types: bars and histogram, heatmap, contour, polar donut and radar, treemap, financial candlesticks, Sankey flow, force-directed graph" width="900">
+  <br>
+  <sub>a montage of real painters — bars · heatmap · contour · polar · treemap · candlesticks · Sankey · force graph</sub>
+</p>
 
 ## Quick start — the gallery
 
@@ -21,8 +27,8 @@ Each painter also has its own demo: `pineal-{heatmap,hexbin,treemap,mesh,financi
 
 ## How dependencies work
 
-This is a clean, light front-door: pineal's only external dependency is the [Llimphi](https://gitea.gioser.net/sergio/llimphi) UI framework, pulled as a git dependency. No monorepo clone, no vendoring — `pineal-core`/`render` are backend-agnostic and the on-screen path is the only one that touches Llimphi.
+This is a clean, light front-door: pineal's only external dependency is the [Llimphi](https://github.com/tawasuyu/llimphi) UI framework, pulled as a git dependency. No monorepo clone, no vendoring — `pineal-core`/`render` are backend-agnostic and the on-screen path is the only one that touches Llimphi.
 
 ## License
 
-MIT. Builds on [Llimphi](https://gitea.gioser.net/sergio/llimphi).
+MIT. Builds on [Llimphi](https://github.com/tawasuyu/llimphi).
